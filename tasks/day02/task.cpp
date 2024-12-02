@@ -73,11 +73,11 @@ public:
 
   bool IsSafe() override
   {
-    return IsSafeWithDamper(report_values) || IsSafeWithDamper({report_values.rbegin(), report_values.rend()});
+    return IsSafeWithDampener(report_values) || IsSafeWithDampener({report_values.rbegin(), report_values.rend()});
   }
 
 private:
-  bool IsSafeWithDamper(const std::vector<int> &values)
+  bool IsSafeWithDampener(const std::vector<int> &values)
   {
     State lastState = State::Unknown;
     bool wasSkipped = false;
@@ -120,7 +120,7 @@ int CountSafeReports(std::istream &input)
   return count;
 }
 
-int CountSafeReportsWithDamper(std::istream &input)
+int CountSafeReportsWithDampener(std::istream &input)
 {
   std::string line;
   int count = 0;
@@ -165,6 +165,6 @@ TEST_CASE("Task day 2")
 
   SECTION("part 2")
   {
-    std::cout << "Day 2 - part 2 result: " << CountSafeReportsWithDamper(data) << std::endl;
+    std::cout << "Day 2 - part 2 result: " << CountSafeReportsWithDampener(data) << std::endl;
   }
 }
