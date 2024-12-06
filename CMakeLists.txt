@@ -9,4 +9,5 @@ add_subdirectory(third_party)
 include(build_config)
 enable_testing()
 
+add_subdirectory(utils)
 add_subdirectory(tasks)
