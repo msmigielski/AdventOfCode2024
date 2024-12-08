@@ -60,9 +60,23 @@ public:
       return false;
     }
 
+    uint64_t temp = numbers[index];
+    uint64_t numDigits = 0;
+    while (temp > 0)
+    {
+      temp /= 10;
+      numDigits++;
+    }
+
+    uint64_t factor = 1;
+    for (uint64_t i = 0; i < numDigits; ++i)
+    {
+      factor *= 10;
+    }
+
     return CheckWithAddMulAndConcatenation(numbers, index + 1, currentResult + numbers[index]) ||
            CheckWithAddMulAndConcatenation(numbers, index + 1, currentResult * numbers[index]) ||
-           CheckWithAddMulAndConcatenation(numbers, index + 1, std::stoll(std::to_string(currentResult) + std::to_string(numbers[index])));
+           CheckWithAddMulAndConcatenation(numbers, index + 1, currentResult * factor + numbers[index]);
   }
 
   bool IsValid() const
