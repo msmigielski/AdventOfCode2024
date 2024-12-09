@@ -107,15 +107,9 @@ struct AntennaMap
         int diffX = otherPoint.column - point.column;
         int diffY = otherPoint.row - point.row;
 
-        for (Point p = {otherPoint.row + diffY, otherPoint.column + diffX};
+        for (Point p = {otherPoint.row, otherPoint.column};
              p.row >= 0 && p.row <= max_row && p.column >= 0 && p.column <= max_column;
              p.row += diffY, p.column += diffX)
-        {
-          antinodes.insert(p);
-        }
-        for (Point p = {otherPoint.row - diffY, otherPoint.column - diffX};
-             p.row >= 0 && p.row <= max_row && p.column >= 0 && p.column <= max_column;
-             p.row -= diffY, p.column -= diffX)
         {
           antinodes.insert(p);
         }
