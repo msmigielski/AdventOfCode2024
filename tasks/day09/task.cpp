@@ -8,11 +8,9 @@ constexpr auto testData = "2333133121414131402";
 
 struct DataBlock
 {
-  int id;
-  int size;
+  std::vector<int> ids;
+  int capacity;
 };
-
-constexpr int emptyId = -1;
 
 class Disk
 {
@@ -21,18 +19,21 @@ public:
   {
     int blockId = 0;
     int i = 0;
-    char c;
-    while (input >> c)
+    std::string line;
+    std::getline(input, line);
+    dataBlocks = std::vector<DataBlock>(line.size());
+    for (const auto &c : line)
     {
-      int blockSize = c - '0';
-      if (i % 2 == 1)
+      const int blockSize = c - '0';
+      if (i % 2 == 0)
       {
-        dataBlocks.emplace_back(DataBlock{emptyId, blockSize});
+        dataBlocks[i].capacity = blockSize;
+        dataBlocks[i].ids = std::vector<int>(blockSize, blockId);
+        ++blockId;
       }
       else
       {
-        dataBlocks.emplace_back(DataBlock{blockId, blockSize});
-        ++blockId;
+        dataBlocks[i].capacity = blockSize;
       }
       ++i;
     }
@@ -40,30 +41,26 @@ public:
 
   uint64_t GetFilesystemChecksum()
   {
-    auto findEmptyBlock = [](const auto &el)
-    { return el.id == emptyId && el.size > 0; };
+    auto findBlockWithEmptySpace = [](const auto &el)
+    { return el.ids.size() != static_cast<size_t>(el.capacity); };
 
     auto findFileBlock = [](const auto &el)
-    { return el.id != emptyId && el.size > 0; };
+    { return el.ids.size() > 0; };
 
-    auto emptyIt = std::find_if(dataBlocks.begin(), dataBlocks.end(), findEmptyBlock);
-    auto fileIt = std::find_if(dataBlocks.rbegin(), dataBlocks.rend(), findFileBlock);
+    std::vector<DataBlock>::iterator emptyIt = std::find_if(dataBlocks.begin(), dataBlocks.end(), findBlockWithEmptySpace);
+    std::vector<DataBlock>::reverse_iterator fileIt = std::find_if(dataBlocks.rbegin(), dataBlocks.rend(), findFileBlock);
 
-    while (emptyIt != dataBlocks.end() && fileIt != dataBlocks.rend())
+    while (emptyIt != dataBlocks.end() && fileIt != dataBlocks.rend() && emptyIt < std::prev(fileIt.base()))
     {
-      if (fileIt->size >= emptyIt->size)
+      while (emptyIt->ids.size() != static_cast<size_t>(emptyIt->capacity) &&
+             fileIt->ids.size() > 0)
       {
-        dataBlocks.emplace(emptyIt, DataBlock{fileIt->id, emptyIt->size});
-        fileIt->size -= emptyIt->size;
-        emptyIt->size = 0;
+        auto val = fileIt->ids.back();
+        fileIt->ids.pop_back();
+        emptyIt->ids.emplace_back(val);
       }
-      else
-      {
-        dataBlocks.emplace(emptyIt, DataBlock{fileIt->id, fileIt->size});
-        emptyIt->size -= fileIt->size;
-        fileIt->size = 0;
-      }
-      emptyIt = std::find_if(emptyIt, dataBlocks.end(), findEmptyBlock);
+
+      emptyIt = std::find_if(emptyIt, dataBlocks.end(), findBlockWithEmptySpace);
       fileIt = std::find_if(fileIt, dataBlocks.rend(), findFileBlock);
     }
 
@@ -71,10 +68,9 @@ public:
     uint64_t index = 0;
     for (const auto &block : dataBlocks)
     {
-      for (size_t i = 0; i < static_cast<size_t>(block.size); ++i)
+      for (const auto &id : block.ids)
       {
-        const auto val = block.id != -1 ? block.id : 0;
-        sum += index * val;
+        sum += index * id;
         ++index;
       }
     }
@@ -85,34 +81,41 @@ public:
   uint64_t GetFilesystemChecksumWithWholeBlocks()
   {
     auto findFileBlock = [](const auto &el)
-    { return el.id != emptyId && el.size > 0; };
+    { return el.ids.size() > 0; };
 
-    auto fileIt = std::find_if(dataBlocks.rbegin(), dataBlocks.rend(), findFileBlock);
+    std::vector<DataBlock>::reverse_iterator fileIt = std::find_if(dataBlocks.rbegin(), dataBlocks.rend(), findFileBlock);
 
     while (fileIt != dataBlocks.rend())
     {
-      auto findEmptyBlock = [fileIt](const auto &el)
-      { return el.id == emptyId && el.size >= fileIt->size; };
-      auto emptyIt = std::find_if(dataBlocks.begin(), dataBlocks.end(), findEmptyBlock);
+      auto findBlockWithEmptySpace = [&fileIt](const auto &el)
+      { return (static_cast<size_t>(el.capacity) - el.ids.size()) >= static_cast<size_t>(fileIt->capacity); };
 
-      if (emptyIt != dataBlocks.end() && std::distance(dataBlocks.begin(), emptyIt) < std::distance(dataBlocks.begin(), fileIt.base()))
+      std::vector<DataBlock>::iterator emptyIt = std::find_if(dataBlocks.begin(), fileIt.base(), findBlockWithEmptySpace);
+
+      if (emptyIt != dataBlocks.end() && emptyIt < std::prev(fileIt.base()))
       {
-        dataBlocks.emplace(emptyIt, DataBlock{fileIt->id, fileIt->size});
-        emptyIt->size -= fileIt->size;
-        fileIt->id = emptyId;
+        while (!fileIt->ids.empty())
+        {
+          auto val = fileIt->ids.back();
+          fileIt->ids.pop_back();
+          emptyIt->ids.emplace_back(val);
+        }
       }
 
-      fileIt = std::find_if(std::next(fileIt), dataBlocks.rend(), findFileBlock);
+      fileIt = std::find_if(fileIt + 1, dataBlocks.rend(), findFileBlock);
     }
 
     uint64_t sum = 0;
     uint64_t index = 0;
     for (const auto &block : dataBlocks)
     {
-      for (size_t i = 0; i < static_cast<size_t>(block.size); ++i)
+      for (const auto &id : block.ids)
       {
-        const auto val = block.id != -1 ? block.id : 0;
-        sum += index * val;
+        sum += index * id;
+        ++index;
+      }
+      for (size_t i = 0; i < block.capacity - block.ids.size(); ++i)
+      {
         ++index;
       }
     }
@@ -120,7 +123,8 @@ public:
     return sum;
   }
 
-  std::list<DataBlock> dataBlocks;
+  std::vector<DataBlock>
+      dataBlocks;
 };
 
 TEST_CASE("Check with test data")
