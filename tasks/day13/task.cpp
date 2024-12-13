@@ -21,22 +21,20 @@ Button B: X+27, Y+71
 Prize: X=18641, Y=10279)";
 struct PairHash
 {
-  std::size_t operator()(const std::pair<uint64_t, uint64_t> &pair) const
+  std::size_t operator()(const std::pair<int64_t, int64_t> &pair) const
   {
-    std::size_t h1 = std::hash<uint64_t>{}(pair.first);
-    std::size_t h2 = std::hash<uint64_t>{}(pair.second);
+    std::size_t h1 = std::hash<int64_t>{}(pair.first);
+    std::size_t h2 = std::hash<int64_t>{}(pair.second);
 
     return h1 ^ (h2 << 1);
   }
 };
 
-struct ClawMachine
+struct ClawMachineWithLimits
 {
-  using PositionsXY = std::pair<uint64_t, uint64_t>;
-  using ButtonsClicks = std::pair<uint64_t, uint64_t>;
-  using Solutions = std::vector<ButtonsClicks>;
+  using PositionsXY = std::pair<int64_t, int64_t>;
 
-  ClawMachine(std::istream &input)
+  ClawMachineWithLimits(std::istream &input)
   {
     std::string line;
     std::getline(input, line);
@@ -45,19 +43,17 @@ struct ClawMachine
     buttonB = ReadValues(line);
     std::getline(input, line);
     prize = ReadValues(line);
-    prize.first += 10000000000000;
-    prize.second += 10000000000000;
   }
 
-  std::pair<uint64_t, uint64_t> ReadValues(const std::string &line)
+  std::pair<int64_t, int64_t> ReadValues(const std::string &line)
   {
     std::regex pattern(R"(X[+=](\d+), Y[+=](\d+))");
     std::smatch matches;
 
     if (std::regex_search(line, matches, pattern))
     {
-      uint64_t x = std::stoi(matches[1].str());
-      uint64_t y = std::stoi(matches[2].str());
+      int64_t x = std::stoi(matches[1].str());
+      int64_t y = std::stoi(matches[2].str());
       return {x, y};
     }
     return {};
@@ -65,103 +61,71 @@ struct ClawMachine
 
   size_t CalcRequiredTokens()
   {
-    PositionsXY clicks;
+    std::pair<int64_t, int64_t> clicks;
 
-    if (((prize.first * buttonA.second) > (prize.second * buttonA.first)) && ((buttonA.second * buttonB.first) <= (buttonA.first * buttonB.second)))
-    {
-      std::cout << "dupa 0" << std::endl;
-      return 0;
-    }
+    // a0 = X * a1 + Y * a2
+    // b0 = X * b1 + Y * b2
+    // X - clicks of button A
+    // Y - clicks of button B
+    // it is solution for X and Y
 
-    if (((buttonA.second * buttonB.first) > (buttonA.first * buttonB.second)) &&
-        ((prize.first * buttonA.second) <= (prize.second * buttonA.first)))
-    {
-      std::cout << "dupa 1" << std::endl;
-      return 0;
-    }
+    int64_t yQuantifier = prize.second * buttonA.first - prize.first * buttonA.second;
+    int64_t yDenominator = buttonA.first * buttonB.second - buttonA.second * buttonB.first;
 
-    if ((buttonA.second * buttonB.first) == (buttonA.first * buttonB.second))
-    {
-      std::cout << "dupa 2" << std::endl;
-      return 0;
-    }
-
-    // if ((prize.first * buttonA.second) > (prize.second * buttonA.first) && (buttonA.second * buttonB.first) <= (buttonA.first * buttonB.second))
-    //   return 0;
-
-    // if ((buttonA.second * buttonB.first) >= (buttonA.first * buttonB.second))
-    //   return 0;
-
-    if ((prize.first * buttonA.second) >= (prize.second * buttonA.first) &&
-        (buttonA.second * buttonB.first) >= (buttonA.first * buttonB.second))
-    {
-      uint64_t first = (prize.first * buttonA.second) - (prize.second * buttonA.first);
-      uint64_t second = (buttonA.second * buttonB.first) - (buttonA.first * buttonB.second);
-      if (first % second != 0)
-      {
-        std::cout << "dupa 8" << std::endl;
-        return 0;
-      }
-      clicks.second = ((prize.first * buttonA.second) - (prize.second * buttonA.first)) /
-                      ((buttonA.second * buttonB.first) - (buttonA.first * buttonB.second));
-    }
-    else
-    {
-      uint64_t first = (prize.second * buttonA.first) - (prize.first * buttonA.second);
-      uint64_t second = (buttonA.first * buttonB.second) - (buttonA.second * buttonB.first);
-      if (first % second != 0)
-      {
-        std::cout << "dupa 9" << std::endl;
-        return 0;
-      }
-
-      clicks.second = ((prize.second * buttonA.first) - (prize.first * buttonA.second)) /
-                      ((buttonA.first * buttonB.second) - (buttonA.second * buttonB.first));
-    }
-
-    // if (clicks.second > maxPushes)
-    // {
-    //   std::cout << "dupa 3" << std::endl;
-    //   return 0;
-    // }
-
-    if ((clicks.second * buttonB.second) > prize.second || buttonA.second == 0)
-    {
-      std::cout << "dupa 4" << std::endl;
-      return 0;
-    }
-
-    uint64_t first = (prize.second - clicks.second * buttonB.second);
-    uint64_t second = buttonA.second;
-
-    if (first % second != 0)
+    if (yDenominator == 0 || yQuantifier % yDenominator != 0)
     {
       return 0;
     }
 
-    // std::cout << (prize.second * buttonA.first) << " - " << (prize.first * buttonA.second) << " = " << ((prize.second * buttonA.first) - (prize.first * buttonA.second)) << std::endl;
-    // std::cout << (buttonA.first * buttonB.second) << " - " << (buttonB.second * buttonA.first) << " = " << (buttonA.first * buttonB.second) - (buttonB.second * buttonA.first) << std::endl;
-    clicks.first = (prize.second - clicks.second * buttonB.second) / buttonA.second;
+    clicks.second = yQuantifier / yDenominator;
 
-    // if (clicks.first > maxPushes)
-    // {
-    //   std::cout << "dupa 5" << std::endl;
-    //   return 0;
-    // }
-    std::cout << clicks.first << " " << clicks.second << std::endl;
+    int64_t xQuantifier = prize.second - clicks.second * buttonB.second;
+    int64_t xDenominator = buttonA.second;
+
+    if (xDenominator == 0 || xQuantifier % xDenominator != 0)
+    {
+      return 0;
+    }
+
+    clicks.first = xQuantifier / xDenominator;
+
+    if (clicks.first > maxClicks || clicks.second > maxClicks)
+    {
+      return 0;
+    }
+
     return clicks.first * costA + clicks.second * costB;
   }
 
-  std::unordered_set<ButtonsClicks, PairHash> alreadyChecked;
-
-  const uint64_t costA = 3;
-  const uint64_t costB = 1;
-  const uint64_t maxPushes = 100;
+  const int64_t costA = 3;
+  const int64_t costB = 1;
+  int64_t maxClicks = 100;
 
   PositionsXY buttonA;
   PositionsXY buttonB;
   PositionsXY prize;
 };
+
+struct ClawMachine : public ClawMachineWithLimits
+{
+  ClawMachine(std::istream &input) : ClawMachineWithLimits(input)
+  {
+    maxClicks = std::numeric_limits<int64_t>::max();
+    prize.first += 10000000000000;
+    prize.second += 10000000000000;
+  }
+};
+
+size_t CalcRequiredTokensWithLimits(std::istream &input)
+{
+  size_t sum = 0;
+  char c;
+  while (input >> c)
+  {
+    sum += ClawMachineWithLimits(input).CalcRequiredTokens();
+  }
+  return sum;
+}
 
 size_t CalcRequiredTokens(std::istream &input)
 {
@@ -180,7 +144,7 @@ TEST_CASE("Check with test data")
 
   SECTION("Part 1")
   {
-    REQUIRE(480u == CalcRequiredTokens(testInput));
+    REQUIRE(480u == CalcRequiredTokensWithLimits(testInput));
   }
 }
 
@@ -193,11 +157,11 @@ TEST_CASE("Task day 13")
 
   SECTION("part 1")
   {
-    std::cout << "Day 13 - part 1 result: " << CalcRequiredTokens(data) << std::endl;
+    std::cout << "Day 13 - part 1 result: " << CalcRequiredTokensWithLimits(data) << std::endl;
   }
 
-  // SECTION("part 2")
-  // {
-  //   std::cout << "Day 11 - part 2 result: " << splitter.CountStones(75) << std::endl;
-  // }
+  SECTION("part 2")
+  {
+    std::cout << "Day 13 - part 2 result: " << CalcRequiredTokens(data) << std::endl;
+  }
 }
