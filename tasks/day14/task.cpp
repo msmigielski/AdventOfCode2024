@@ -16,9 +16,9 @@ p=7,3 v=-1,2
 p=2,4 v=2,-3
 p=9,5 v=-3,-3)";
 
-struct ClawMachineWithLimits
+struct Robot
 {
-  ClawMachineWithLimits(const std::string &line, int64_t limitX_, int64_t limitY_)
+  Robot(const std::string &line, int64_t limitX_, int64_t limitY_)
       : limitX(limitX_), limitY(limitY_)
   {
     std::regex pattern(R"(p=(-?\d+),(-?\d+) v=(-?\d+),(-?\d+))");
@@ -60,7 +60,7 @@ size_t CountRobotsInQuadrants(std::istream &input, int limitX, int limitY)
   std::string line;
   while (std::getline(input, line))
   {
-    const auto pos = ClawMachineWithLimits(line, limitX, limitY).GetPositionAfterSteps(100);
+    const auto pos = Robot(line, limitX, limitY).GetPositionAfterSteps(100);
     if (pos.first < limitX / 2 && pos.second < limitY / 2)
     {
       ++q1;
@@ -92,7 +92,7 @@ void PrintPositions(int limitX, int limitY, int iterations)
     std::set<std::pair<int, int>> points;
     while (std::getline(data, line))
     {
-      points.emplace(ClawMachineWithLimits(line, limitX, limitY).GetPositionAfterSteps(i));
+      points.emplace(Robot(line, limitX, limitY).GetPositionAfterSteps(i));
     }
     for (int x = 0; x < limitX; ++x)
     {
